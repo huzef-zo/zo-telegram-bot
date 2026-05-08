@@ -10,7 +10,7 @@ if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing!");
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 // ── Config ───────────────────────────────────────
 const DELAY_MS = 7 * 60 * 1000; // 7 minutes
