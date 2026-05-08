@@ -7,12 +7,12 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "node-telegram-bot-api": "^0.66.0",
-    "@google/generative-ai": "^0.21.0"
+    "node-telegram-bot-api": "^0.66.0"
   },
   "overrides": {
     "axios": "^1.8.2",
-    "tough-cookie": "^4.1.3"
+    "tough-cookie": "^4.1.4",
+    "form-data": "^4.0.1"
   },
   "engines": {
     "node": ">=18"
