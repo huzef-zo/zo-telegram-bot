@@ -2,10 +2,10 @@ const TelegramBot = require("node-telegram-bot-api");
 const http = require("http");
 
 const TOKEN = process.env.BOT_TOKEN;
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const GROQ_KEY = process.env.GROQ_API_KEY;
 
 if (!TOKEN) throw new Error("BOT_TOKEN is missing!");
-if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing!");
+if (!GROQ_KEY) throw new Error("GROQ_API_KEY is missing!");
 
 const bot = new TelegramBot(TOKEN, {
   polling: {
@@ -14,7 +14,7 @@ const bot = new TelegramBot(TOKEN, {
   }
 });
 
-// Clear any existing polling sessions before starting
+// Clear ghost instances then start polling
 bot.deleteWebHook().then(() => {
   bot.startPolling();
   console.log("✅ Polling started clean.");
@@ -24,7 +24,7 @@ bot.deleteWebHook().then(() => {
 });
 
 // ── Config ───────────────────────────────────────
-const DELAY_MS = 7 * 60 * 1000;
+const DELAY_MS = 7 * 60 * 1000; // 7 minutes
 
 // ── State ────────────────────────────────────────
 const pendingReplies = new Map();
@@ -50,7 +50,7 @@ Your rules:
 - Never pretend to be Zo directly
 - Always end with something reassuring like "Zo will get back to you soon!"`;
 
-// ── Gemini API call using fetch ──────────────────
+// ── Groq API call ────────────────────────────────
 async function getAIReply(userMessage) {
   const url = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -69,7 +69,7 @@ async function getAIReply(userMessage) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+        "Authorization": `Bearer ${GROQ_KEY}`
       },
       body: JSON.stringify(body)
     });
@@ -121,7 +121,7 @@ function scheduleReply(chatId, text, businessConnectionId) {
       return;
     }
 
-    console.log(`[${chatId}] Calling Gemini for: "${text}"`);
+    console.log(`[${chatId}] Calling Groq for: "${text}"`);
     const aiReply = await getAIReply(text);
     const reply = aiReply || fallbackReply();
     console.log(`[${chatId}] Reply: "${reply}"`);
@@ -138,6 +138,7 @@ function scheduleReply(chatId, text, businessConnectionId) {
 
 // ── Incoming business message ────────────────────
 bot.on("business_message", (msg) => {
+  console.log("📨 business_message received:", msg.text);
   const text = msg.text || "";
   if (!text) return;
   if (msg.from && msg.from.is_bot) return;
@@ -147,6 +148,7 @@ bot.on("business_message", (msg) => {
 
   const lastZoReply = zoReplied.get(chatId) || 0;
   if (Date.now() - lastZoReply < DELAY_MS) {
+    console.log(`[${chatId}] Zo was active recently — skipping.`);
     if (pendingReplies.has(chatId)) {
       clearTimeout(pendingReplies.get(chatId));
       pendingReplies.delete(chatId);
@@ -157,7 +159,7 @@ bot.on("business_message", (msg) => {
   scheduleReply(chatId, text, businessConnectionId);
 });
 
-// ── Zo's own messages ────────────────────────────
+// ── Zo's own messages — cancel pending reply ─────
 bot.on("message", (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text || "";
@@ -172,6 +174,7 @@ bot.on("message", (msg) => {
     return;
   }
 
+  // Direct test messages to bot
   if (!text || text.startsWith("/start")) {
     if (!greeted.has(chatId)) {
       greeted.add(chatId);
@@ -180,18 +183,18 @@ bot.on("message", (msg) => {
     return;
   }
 
-  // Direct test — immediate Gemini reply
-  console.log(`[TEST] Testing Gemini with: "${text}"`);
+  // Instant Groq reply for direct testing
+  console.log(`[TEST] Testing Groq with: "${text}"`);
   getAIReply(text).then((reply) => {
     const finalReply = reply || fallbackReply();
-    console.log(`[TEST] Gemini replied: "${finalReply}"`);
+    console.log(`[TEST] Groq replied: "${finalReply}"`);
     bot.sendMessage(chatId, finalReply);
   });
 });
 
-// ── Business connection ──────────────────────────
+// ── Business connection event ────────────────────
 bot.on("business_connection", (conn) => {
-  console.log("Business connection:", conn.id);
+  console.log("Business connection:", conn.id, "| Active:", conn.is_enabled);
 });
 
 // ── Keep Render alive ────────────────────────────
@@ -201,4 +204,4 @@ http.createServer((req, res) => {
   res.end("Zo's bot is running!");
 }).listen(PORT);
 
-console.log(`🤖 Zo's AI bot is live — delay: ${DELAY_MS / 60000} min | port: ${PORT}`);
+console.log(`🤖 Zo's Groq AI bot is live — delay: ${DELAY_MS / 60000} min | port: ${PORT}`);
