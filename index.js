@@ -52,41 +52,38 @@ Your rules:
 
 // ── Gemini API call using fetch ──────────────────
 async function getAIReply(userMessage) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+  const url = "https://api.groq.com/openai/v1/chat/completions";
 
   const body = {
-    system_instruction: {
-      parts: [{ text: SYSTEM_PROMPT }]
-    },
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: userMessage }]
-      }
+    model: "llama-3.1-8b-instant",
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userMessage }
     ],
-    generationConfig: {
-      maxOutputTokens: 150,
-      temperature: 0.8
-    }
+    max_tokens: 150,
+    temperature: 0.8
   };
 
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+      },
       body: JSON.stringify(body)
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("Gemini API error:", JSON.stringify(data));
+      console.error("Groq API error:", JSON.stringify(data));
       return null;
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data?.choices?.[0]?.message?.content;
     if (!text) {
-      console.error("Gemini empty response:", JSON.stringify(data));
+      console.error("Groq empty response:", JSON.stringify(data));
       return null;
     }
 
