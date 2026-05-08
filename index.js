@@ -7,7 +7,21 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY;
 if (!TOKEN) throw new Error("BOT_TOKEN is missing!");
 if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing!");
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN, {
+  polling: {
+    autoStart: false,
+    params: { timeout: 10 }
+  }
+});
+
+// Clear any existing polling sessions before starting
+bot.deleteWebHook().then(() => {
+  bot.startPolling();
+  console.log("✅ Polling started clean.");
+}).catch((err) => {
+  console.error("Webhook clear error:", err.message);
+  bot.startPolling();
+});
 
 // ── Config ───────────────────────────────────────
 const DELAY_MS = 7 * 60 * 1000;
